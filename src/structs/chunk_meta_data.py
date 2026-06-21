@@ -5,6 +5,9 @@ class Import:
     module_name: str
     alias: str
 
+    def __str__(self) -> str:
+        return f"{self.module_name}"
+
 
 @dataclass
 class ChunkMetaData:
