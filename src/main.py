@@ -8,6 +8,7 @@ from tree_sitter import Language, Node, Parser
 from collections import deque
 from structs.chunk_meta_data import ChunkMetaData, Import
 from uuid import uuid4
+from utils import jsonl
 from utils.constants import SEMANTIC_CHUNKS
 
 PY_LANGUAGE = Language(tspython.language())
@@ -223,7 +224,7 @@ def get_imports(node: Node) -> list[Import]:
 
 
 def init_metadata(
-    root: Node | None, file_path="", module_path="", language=""
+    root: Node | None, file_path: str, module_path: str, language: str, dir_path: Path
 ) -> ChunkMetaData:
     res = ChunkMetaData()
     res.chunk_id = str(uuid4())
@@ -232,7 +233,7 @@ def init_metadata(
     res.qualified_name = "module"
     res.parent_name = None
     res.parent_type = None
-    res.file_path = file_path
+    res.file_path = os.path.relpath(file_path, dir_path)
     res.file_name = os.path.basename(file_path)
     res.module_path = module_path
     res.language = language
@@ -254,6 +255,7 @@ def init_metadata(
 def chunk_python_file(
     file_path: str,
     module_path: str,
+    dir_path: Path,
     language: str = "Python",
     file_stream: IO[str] | None = None,
 ):
@@ -269,7 +271,7 @@ def chunk_python_file(
         root = tree.root_node
 
     q: deque[tuple[Node, ChunkMetaData]] = deque([])
-    parent_metadata = init_metadata(root, file_path, module_path, language)
+    parent_metadata = init_metadata(root, file_path, module_path, language, dir_path)
     q.append((root, parent_metadata))
     chunks: list[ChunkMetaData] = []
 
@@ -298,7 +300,7 @@ def chunk_python_file(
                 parent_metadata.chunk_type == "module"
                 and child.type not in SEMANTIC_CHUNKS.values()
             ):  # if it's file level code
-                chunk = init_metadata(None, file_path, module_path, language)
+                chunk = init_metadata(None, file_path, module_path, language, dir_path)
                 chunk.start_line = child.start_point.row
 
                 while (
@@ -330,13 +332,12 @@ def chunk_python_file(
     if not chunks:
         chunks.append(parent_metadata)
 
-    for chunk in chunks:
-        pprint(chunk, file_stream)
-
     return chunks
 
 
-def preprocess_python_file(file: Path, dir_path: Path, file_stream: IO[str] | None):
+def preprocess_chunk_python_file(
+    file: Path, dir_path: Path, file_stream: IO[str] | None
+):
     module_parts = list(Path(os.path.relpath(file, dir_path)).parts)
     module_parts[-1] = module_parts[-1].split(".")[0]
 
@@ -344,7 +345,7 @@ def preprocess_python_file(file: Path, dir_path: Path, file_stream: IO[str] | No
         module_parts.pop()
 
     module_path = ".".join(module_parts)
-    return chunk_python_file(str(file), module_path, "Python", file_stream)
+    return chunk_python_file(str(file), module_path, dir_path, "Python", file_stream)
 
 
 def chunk_files(dir_path: Path, file_stream: IO[str] | None):
@@ -352,7 +353,8 @@ def chunk_files(dir_path: Path, file_stream: IO[str] | None):
 
     for file in files:
         if file.suffix.lower() == ".py":
-            preprocess_python_file(file, dir_path, file_stream)
+            chunks = preprocess_chunk_python_file(file, dir_path, file_stream)
+            jsonl.chunks2jsonl(chunks, file_stream)
 
 
 def walk_directory(dir_path: Path):
@@ -366,6 +368,7 @@ def walk_directory(dir_path: Path):
             yield Path(os.path.join(root, file))
 
 
-curr_dir = Path.cwd()
-with open("output.txt", "w") as f:
+curr_dir = Path.cwd() / "data" / "test-repo"
+print(curr_dir)
+with open("output.jsonl", "w") as f:
     chunk_files(curr_dir, f)
