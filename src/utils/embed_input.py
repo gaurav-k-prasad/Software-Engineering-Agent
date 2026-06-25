@@ -4,7 +4,6 @@ from structs.chunk_meta_data import ChunkMetaData, Import
 
 def jsonl2datadict(s: str):
     json_dict = json.loads(s)
-    print(len(json_dict["source_code"]))
     json_dict["imports"] = [Import(**_import) for _import in json_dict["imports"]] # converting
 
     return ChunkMetaData(**json_dict)
@@ -58,7 +57,7 @@ Qualified Name: {datadict.qualified_name}
     elif "module" in datadict.chunk_type:
         res += f"""Type: Module
 
-Qualified Name: {datadict.qualified_name}
+Qualified Name: {datadict.module_path}
 
 File: {datadict.file_name}
 
@@ -66,13 +65,14 @@ File: {datadict.file_name}
     else:
         raise NotImplementedError(f"{datadict.chunk_type} is not implemented")
 
-    if datadict.imports:
+    if datadict.imports and "module" not in datadict.chunk_type: # useless imports information in module level information
         res += "Imports:\n"
 
-        for _import in datadict.imports:
-            res += f"{str(_import)} "
+        for i, _import in enumerate(datadict.imports):
+            res += f"{str(_import)}"
+            res += ", " if i < len(datadict.imports) - 1 else ""
 
-        res += "\n"
+        res += "\n\n"
 
     if datadict.decorators:
         res += "Decorators:\n"
@@ -82,7 +82,8 @@ File: {datadict.file_name}
 
         res += "\n"
 
-    res += "Source Code:\n"
-    res += datadict.source_code
+    if "class" not in datadict.chunk_type: # class need not have full source code
+        res += "Source Code:\n"
+        res += datadict.source_code
 
     return res

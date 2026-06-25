@@ -4,7 +4,7 @@ SEMANTIC_CHUNKS: dict[str, str] = {
     "DECORATOR": "decorated_definition",
 }
 
-BATCH_SIZE = 1
+BATCH_SIZE = 2
 DIMENSIONS = 768
 CODE_MAX_LENGTH = 8192
 NEAREST_NEIGHBOUR_COUNT = 10
