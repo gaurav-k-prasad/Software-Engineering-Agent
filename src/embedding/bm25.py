@@ -1,9 +1,8 @@
 from collections import defaultdict
 import math
 from typing import overload
-from embedding.rag_serach_abstract import SearchCodeBase
+from embedding.rag_serach_abstract import SearchCodeBase, SearchResult
 from embedding.tokenizer import Tokenizer
-from structs.chunk_meta_data import ChunkMetaData
 
 
 class BM25_Plus(SearchCodeBase):
@@ -13,9 +12,9 @@ class BM25_Plus(SearchCodeBase):
         b: float = 0.5,
         delta: float = 1,
     ) -> None:
-        self.inverted_idx: dict[str, dict[int, int]] = defaultdict(dict)
+        self.inverted_idx: dict[str, dict[str, int]] = defaultdict(dict)
         self.n = 0
-        self.docs_len: dict[int, int] = {}
+        self.docs_len: dict[str, int] = {}
         self.tokdocs_tokidf: dict[str, float] = {}
         self.doc_len_sum = 0
         self.tokenizer = Tokenizer()
@@ -23,70 +22,53 @@ class BM25_Plus(SearchCodeBase):
         self.delta = delta
         self.b = b
         self.avg_len = 0
-        self.metadatas = []
 
         self.finalized = (
             False  # Flag to make sure after insertion finalize function is called
         )
 
-    def fit(self, text: str, chunk_idx: int, metadata: ChunkMetaData) -> None:
-        tokens = self.tokenizer.tokenize(text)
-        doc_len = sum(tokens.values())
-        self.metadatas.append(metadata)
+    def fit(self, texts: str | list[str], chunk_ids: str | list[str]) -> None:
+        if isinstance(texts, str) and isinstance(chunk_ids, str):
+            texts = [texts]
+            chunk_ids = [chunk_ids]
 
-        for token, count in tokens.items():
-            self.inverted_idx[token][chunk_idx] = count
-        self.doc_len_sum += doc_len
-        self.docs_len[chunk_idx] = doc_len
-        self.n += 1
-        self.finalized = False
+        if not (isinstance(texts, list) and isinstance(chunk_ids, list)):
+            raise ValueError(
+                "texts and chunk_ids should be either both singular or both list"
+            )
+
+        if not (len(texts) == len(chunk_ids)):
+            raise ValueError(
+                "Length of texts and chunk idx should be same"
+            )
+
+        self.n += len(texts)
+        updated_tokens: set[str] = set()
+
+        for chunk_id, text in zip(chunk_ids, texts):
+            tokens = self.tokenizer.tokenize(text)
+            doc_len = sum(tokens.values())
+
+            for token, count in tokens.items():
+                self.inverted_idx[token][chunk_id] = count
+                updated_tokens.add(token)
+            self.doc_len_sum += doc_len
+            self.docs_len[chunk_id] = doc_len
+
+        self._finalize(updated_tokens)
 
     def calculate_idf(self, count: int) -> float:
         idf = math.log(((self.n - count + 0.5) / (count + 0.5)) + 1)
         return idf
 
-    def fit_finalize(
-        self,
-        texts: list[str] | str,
-        chunk_idx: list[int] | int,
-        metadata: list[ChunkMetaData] | ChunkMetaData,
-    ) -> None:
-        if (
-            isinstance(texts, str)
-            and isinstance(chunk_idx, int)
-            and isinstance(metadata, ChunkMetaData)
-        ):
-            texts = [texts]
-            chunk_idx = [chunk_idx]
-            metadata = [metadata]
-
-        if not (
-            isinstance(texts, list)
-            and isinstance(chunk_idx, list)
-            and isinstance(metadata, list)
-        ):
-            raise ValueError(
-                "Texts, chunk_idx, metdata should be either all multiple or all single"
-            )
-
-        if not (len(texts) == len(chunk_idx) == len(metadata)):
-            raise ValueError(
-                "Length of texts and chunk idx and metadatas should be same"
-            )
-
-        for text, curr_chunk_idx, curr_metadata in zip(texts, chunk_idx, metadata):
-            self.fit(text, curr_chunk_idx, curr_metadata)
-
-        self.finalize()
-
-    def finalize(self) -> None:
+    def _finalize(self, updated_tokens: set[str]) -> None:
         if self.n == 0:
             raise ValueError("Cannot finalize empty corpus")
 
-        for token, docs in self.inverted_idx.items():
-            count = len(docs)
+        for token in updated_tokens:
+            count = len(self.inverted_idx[token])
             self.tokdocs_tokidf[token] = self.calculate_idf(count)
-        self.avg_len = self.doc_len_sum / self.n
+        self.avg_len: float = self.doc_len_sum / self.n
         self.finalized = True
 
     def average_length(self) -> float:
@@ -95,15 +77,15 @@ class BM25_Plus(SearchCodeBase):
 
         return self.doc_len_sum / self.n
 
-    def _search(self, query: str, n_results: int = -1) -> list[tuple[int, float]]:
+    def _search(self, query: str, n_results: int = -1) -> list[tuple[str, float]]:
         if not self.finalized:
             raise ValueError("BM25+ not finalized. Call obj.finalize() then search")
 
         tokens = self.tokenizer.tokenize(query)
         avg_len = self.avg_len
-        res: list[tuple[int, float]] = []
+        res: list[tuple[str, float]] = []
 
-        docs: dict[int, int] = {}
+        docs: dict[str, int] = {}
         for token in tokens:
             token_docs = self.inverted_idx[token]
             docs.update(
@@ -112,8 +94,6 @@ class BM25_Plus(SearchCodeBase):
 
         for doc_id, doc_len in docs.items():
             bm25 = 0
-            # if doc_id == 82:
-                # print(doc_id, doc_len, self.metadatas[doc_id])
             for token in tokens:
                 f_qi_D = self.inverted_idx[token].get(doc_id, 0)
                 if f_qi_D == 0:
@@ -127,11 +107,6 @@ class BM25_Plus(SearchCodeBase):
                 tf += self.delta  # using bm+
 
                 bm25 += tf * idf
-            #     if doc_id == 82:
-            #         print(token, tf, idf, tf * idf)
-            
-            # if doc_id == 82:
-            #     print(bm25)
             res.append((doc_id, bm25))
 
         res.sort(key=lambda x: -x[1])
@@ -140,28 +115,27 @@ class BM25_Plus(SearchCodeBase):
         return res[:n_results]
 
     @overload
-    def search(self, query: str, no_of_outputs: int) -> list[ChunkMetaData]: ...
+    def search(self, query: str, no_of_outputs: int) -> list[SearchResult]: ...
 
     @overload
     def search(
         self, query: list[str], no_of_outputs: int
-    ) -> list[list[ChunkMetaData]]: ...
+    ) -> list[list[SearchResult]]: ...
 
     def search(
         self, query: str | list[str], no_of_outputs: int = -1
-    ) -> list[ChunkMetaData] | list[list[ChunkMetaData]]:
+    ) -> list[SearchResult] | list[list[SearchResult]]:
         is_single_query = False
         if isinstance(query, str):
             is_single_query = True
             query = [query]
 
-        res: list[list[ChunkMetaData]] = []
+        res: list[list[SearchResult]] = []
         for q in query:
-            curr: list[ChunkMetaData] = []
+            curr: list[SearchResult] = []
             id_bm = self._search(q, no_of_outputs)
-            for i, (_id, _) in enumerate(id_bm):
-                # print(i, _id, _)
-                curr.append(self.metadatas[_id])
+            for _id, dist in id_bm:
+                curr.append(SearchResult(_id, dist))
             res.append(curr)
 
         if is_single_query:

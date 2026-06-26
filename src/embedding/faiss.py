@@ -1,10 +1,9 @@
 from typing import overload
 from tqdm import tqdm
 from transformers import AutoModel
-import faiss
 import torch
-from embedding.rag_serach_abstract import SearchCodeBase
-from structs.chunk_meta_data import ChunkMetaData
+import faiss
+from embedding.rag_serach_abstract import SearchCodeBase, SearchResult
 from utils.constants import BATCH_SIZE, DIMENSIONS, CODE_MAX_LENGTH
 
 
@@ -19,20 +18,36 @@ class FAISS(SearchCodeBase):
         )
 
         self.index = faiss.IndexHNSWFlat(DIMENSIONS, 32, faiss.METRIC_L2)
-        self.metadatas = []
+        self.idx_to_id: dict[int, str] = {}
         self.batch_size = batch_size
+        self.curr_idx = 0
 
-    def embed_and_store(
+    def fit(
         self,
-        texts: list[str],
-        metadatas: list[ChunkMetaData],
+        texts: list[str] | str,
+        chunk_ids: list[str] | str,
     ) -> None:
-        self.metadatas.extend(metadatas)
+        if isinstance(texts, str) and isinstance(chunk_ids, str):
+            texts = [texts]
+            metadatas = [chunk_ids]
+
+        if not (isinstance(texts, list) and isinstance(chunk_ids, list)):
+            raise ValueError(
+                "texts and metadatas should be either both singular or both list"
+            )
+
+        if not (len(texts) == len(chunk_ids)):
+            raise ValueError(
+                "Length of texts and chunk idx and metadatas should be same"
+            )
+
         batch: list[str] = []
         batches: list[list[str]] = []
 
-        for i, text in enumerate(texts):
+        for i, (chunk_id, text) in enumerate(zip(chunk_ids, texts)):
             batch.append(text)
+            self.idx_to_id[self.curr_idx] = chunk_id
+            self.curr_idx += 1
 
             if len(batch) == BATCH_SIZE or i == len(texts) - 1:
                 batches.append(batch)
@@ -47,42 +62,46 @@ class FAISS(SearchCodeBase):
 
             self.index.add(embeddings)
 
+    def _search(self, query: str, no_of_outputs: int) -> list[tuple[str, float]]:
+        query_vector = self.model.encode(
+            [query],
+            max_length=CODE_MAX_LENGTH,
+        )
+        distances, indices = self.index.search(query_vector, k=no_of_outputs)
+        distances, indices = distances[0].tolist(), indices[0].tolist()
+        res: list[tuple[str, float]] = []
+
+        for idx, dist in zip(indices, distances):
+            item = (self.idx_to_id[idx], dist)
+            res.append(item)
+
+        return res
+
     @overload
-    def search(self, query: str, no_of_outputs: int) -> list[ChunkMetaData]: ...
+    def search(self, query: str, no_of_outputs: int) -> list[SearchResult]: ...
 
     @overload
     def search(
         self, query: list[str], no_of_outputs: int
-    ) -> list[list[ChunkMetaData]]: ...
+    ) -> list[list[SearchResult]]: ...
 
     def search(
         self, query: str | list[str], no_of_outputs: int
-    ) -> list[ChunkMetaData] | list[list[ChunkMetaData]]:
+    ) -> list[SearchResult] | list[list[SearchResult]]:
         is_single_query = False
         if isinstance(query, str):
             is_single_query = True
             query = [query]
 
-        res: list[list[ChunkMetaData]] = []
+        res: list[list[SearchResult]] = []
 
-        indices_n_query = self._search_indices(query, no_of_outputs)
-        for indices in indices_n_query:
-            curr: list[ChunkMetaData] = []
-            for index in indices:
-                curr.append(self.metadatas[index])
-
+        for q in query:
+            curr: list[SearchResult] = []
+            id_dist = self._search(q, no_of_outputs)
+            for _id, dist in id_dist:
+                curr.append(SearchResult(_id, dist))
             res.append(curr)
 
         if is_single_query:
             return res[0]
         return res
-
-    def _search_indices(self, query: list[str], no_of_outputs: int) -> list[list[int]]:
-        query_vector = self.model.encode(
-            query,
-            max_length=CODE_MAX_LENGTH,
-        )
-
-        distances, indices = self.index.search(query_vector, k=no_of_outputs)
-
-        return indices.tolist()

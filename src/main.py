@@ -1,14 +1,16 @@
 import warnings
 
+from embedding.document_store import DocumentStore
+from embedding.hybrid_search import HybridSearch
+
 warnings.filterwarnings("ignore")
 
 from collections import defaultdict
-from embedding import BM25_Plus
 from utils.constants import BATCH_SIZE, NEAREST_NEIGHBOUR_COUNT
 from tqdm import tqdm
 from pathlib import Path
 from chunking import chunk_files
-from embedding import FAISS
+from embedding import FAISS, HybridSearch, BM25_Plus, ReciprocalRankFusion, SearchResult
 from evaluator import Evaluator, SearchQueryData
 from utils.embed_input import datadict2embed_input, jsonl2datadict
 from pprint import pprint
@@ -31,35 +33,39 @@ with open("./rag_eval_dataset_symbolic.jsonl", "r") as f:
 
 
 texts: list[str] = []
+chunk_ids: list[str] = []
+doc_store = DocumentStore()
+
 for i in range(n_chunks):
     embed_input = datadict2embed_input(metadatas[i])
+    chunk_ids.append(metadatas[i].chunk_id)
+    doc_store.insert(metadatas[i])
     texts.append(embed_input)
 
 dense = FAISS(batch_size=BATCH_SIZE)
-dense.embed_and_store(texts, metadatas)
-
 bm25 = BM25_Plus()
-bm25.fit_finalize(texts, list(range(len(texts))), metadatas)
 
-while True:
-    try:
-        q = input()
-        if q == "q":
-            break
+hybrid_search = HybridSearch([dense, bm25], ReciprocalRankFusion())
+hybrid_search.fit(texts, chunk_ids)
 
-        dense_results = dense.search(q, 20)
-        bm25_results = bm25.search(q, 20)
-        scores: defaultdict[str, float] = defaultdict(float)
+e = Evaluator()
+print(e.evaluate(1, lambda x, y: doc_store.get([item.chunk_id for item in hybrid_search.search(x, y)]), target), "\n\n")
+print(e.evaluate(2, lambda x, y: doc_store.get([item.chunk_id for item in hybrid_search.search(x, y)]), target), "\n\n")
+print(e.evaluate(5, lambda x, y: doc_store.get([item.chunk_id for item in hybrid_search.search(x, y)]), target), "\n\n")
+print(e.evaluate(10, lambda x, y: doc_store.get([item.chunk_id for item in hybrid_search.search(x, y)]), target), "\n\n")
+print(e.evaluate(20, lambda x, y: doc_store.get([item.chunk_id for item in hybrid_search.search(x, y)]), target), "\n\n")
 
-        for rank, doc in enumerate(dense_results, start=1):
-            scores[doc.chunk_id] += 1 / (60 + rank)
+# while True:
+#     try:
+#         q = input("Enter your query: ")
+#         if q == "q":
+#             break
 
-        for rank, doc in enumerate(bm25_results, start=1):
-            scores[doc.chunk_id] += 1 / (60 + rank)
+#         hybrid_result = hybrid_search.search(q, 5)
+#         ids = [res.chunk_id for res in hybrid_result]
+#         res = doc_store.get(ids)
 
-        sorted_docs = sorted(scores.items(), key=lambda x: -x[1])
-
-        pprint(sorted_docs)
-
-    except Exception:
-        continue
+#         for r in res:
+#             pprint(r)
+#     except Exception as e:
+#         print(e)
