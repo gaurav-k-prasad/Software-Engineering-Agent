@@ -1,11 +1,12 @@
 from collections import defaultdict
 import math
 from typing import overload
+from embedding.rag_serach_abstract import SearchCodeBase
 from embedding.tokenizer import Tokenizer
 from structs.chunk_meta_data import ChunkMetaData
 
 
-class BM25_Plus:
+class BM25_Plus(SearchCodeBase):
     def __init__(
         self,
         k: float = 1.3,

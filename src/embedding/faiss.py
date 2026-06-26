@@ -1,15 +1,14 @@
 from typing import overload
-
 from tqdm import tqdm
 from transformers import AutoModel
 import faiss
 import torch
+from embedding.rag_serach_abstract import SearchCodeBase
 from structs.chunk_meta_data import ChunkMetaData
 from utils.constants import BATCH_SIZE, DIMENSIONS, CODE_MAX_LENGTH
-from utils.embed_input import datadict2embed_input
 
 
-class FAISS:
+class FAISS(SearchCodeBase):
     def __init__(
         self,
         model_name: str = "jinaai/jina-embeddings-v2-base-code",
