@@ -1,8 +1,8 @@
 from collections import defaultdict
 import math
 from typing import overload
-from embedding.rag_serach_abstract import SearchCodeBase, SearchResult
-from embedding.tokenizer import Tokenizer
+from .search_code_base import SearchCodeBase, SearchResult
+from .tokenizer import Tokenizer
 
 
 class BM25_Plus(SearchCodeBase):

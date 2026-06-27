@@ -1,5 +1,6 @@
 from typing import overload
-from structs.chunk_meta_data import ChunkMetaData
+from .search_code_base import SearchResult
+from structs import ChunkMetaData
 
 
 class DocumentStore:
@@ -46,3 +47,17 @@ class DocumentStore:
         if is_single_query:
             return res[0]
         return res
+
+    def get_from_search_result(
+        self, search_results: SearchResult | list[SearchResult]
+    ) -> ChunkMetaData | list[ChunkMetaData]:
+        is_single_query = False
+        if isinstance(search_results, SearchResult):
+            search_results = [search_results]
+            is_single_query = True
+
+        ids = [res.chunk_id for res in search_results]
+        if is_single_query:
+            ids = ids[0]
+
+        return self.get(ids)

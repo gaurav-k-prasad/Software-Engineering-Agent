@@ -1,20 +1,13 @@
-from collections import defaultdict
 from typing import overload
-
-from embedding.document_store import DocumentStore
-from embedding.fusion_strategy_abstract import FusionStrategy
-from structs.chunk_meta_data import ChunkMetaData
-from utils.constants import BATCH_SIZE
-from .faiss import FAISS
-from embedding.bm25 import BM25_Plus
-from embedding.rag_serach_abstract import SearchCodeBase, SearchResult
+from .fusion_strategy_base import FusionStrategyBase
+from .search_code_base import SearchCodeBase, SearchResult
 
 
 class HybridSearch(SearchCodeBase):
     def __init__(
         self,
         backends: list[SearchCodeBase],
-        fusion_strategy: FusionStrategy,
+        fusion_strategy: FusionStrategyBase,
     ) -> None:
         if len(backends) == 0:
             raise ValueError("atleast one backend index required")

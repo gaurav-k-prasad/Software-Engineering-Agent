@@ -1,11 +1,7 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass
 from typing import overload
+from structs import SearchResult
 
-@dataclass
-class SearchResult:
-    chunk_id: str
-    score: float
 
 class SearchCodeBase(ABC):
     @abstractmethod
@@ -20,7 +16,5 @@ class SearchCodeBase(ABC):
         """Search for a multiple queries"""
         pass
 
-
     @abstractmethod
-    def fit(self, texts: list[str] | str, chunk_ids: list[str] | str):
-        ...
+    def fit(self, texts: list[str] | str, chunk_ids: list[str] | str): ...

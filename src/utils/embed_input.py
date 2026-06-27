@@ -1,5 +1,5 @@
 import json
-from structs.chunk_meta_data import ChunkMetaData, Import
+from structs import ChunkMetaData, Import
 
 
 def jsonl2datadict(s: str):

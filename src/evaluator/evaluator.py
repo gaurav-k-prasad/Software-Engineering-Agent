@@ -1,5 +1,5 @@
 from typing import Callable, TypedDict
-from structs.chunk_meta_data import ChunkMetaData
+from structs import ChunkMetaData
 
 
 class SearchQueryData(TypedDict):

@@ -1,10 +1,9 @@
 from collections import defaultdict
+from .fusion_strategy_base import FusionStrategyBase
+from .search_code_base import SearchResult
 
-from embedding.fusion_strategy_abstract import FusionStrategy
-from embedding.rag_serach_abstract import SearchResult
 
-
-class ReciprocalRankFusion(FusionStrategy):
+class ReciprocalRankFusion(FusionStrategyBase):
     def merge(
         self, outputs: list[list[SearchResult]], no_of_outputs: int = -1
     ) -> list[SearchResult]:

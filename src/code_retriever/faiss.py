@@ -3,7 +3,7 @@ from tqdm import tqdm
 from transformers import AutoModel
 import torch
 import faiss
-from embedding.rag_serach_abstract import SearchCodeBase, SearchResult
+from .search_code_base import SearchCodeBase, SearchResult
 from utils.constants import BATCH_SIZE, DIMENSIONS, CODE_MAX_LENGTH
 
 
