@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from .search_code_base import SearchResult
+from code_retriever.search_base import SearchResult
 
 
 class FusionStrategyBase(ABC):

@@ -1,11 +1,11 @@
 from collections import defaultdict
 import math
 from typing import overload
-from .search_code_base import SearchCodeBase, SearchResult
-from .tokenizer import Tokenizer
+from code_retriever.search_base import SearchBase, SearchResult
+from code_retriever.tokenizer import Tokenizer
 
 
-class BM25_Plus(SearchCodeBase):
+class BM25_Plus(SearchBase):
     def __init__(
         self,
         k: float = 1.3,
@@ -38,9 +38,7 @@ class BM25_Plus(SearchCodeBase):
             )
 
         if not (len(texts) == len(chunk_ids)):
-            raise ValueError(
-                "Length of texts and chunk idx should be same"
-            )
+            raise ValueError("Length of texts and chunk idx should be same")
 
         self.n += len(texts)
         updated_tokens: set[str] = set()

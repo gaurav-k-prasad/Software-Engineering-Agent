@@ -1,12 +1,12 @@
 from typing import overload
-from .fusion_strategy_base import FusionStrategyBase
-from .search_code_base import SearchCodeBase, SearchResult
+from code_retriever.fusion_strategy_base import FusionStrategyBase
+from code_retriever.search_base import SearchBase, SearchResult
 
 
-class HybridSearch(SearchCodeBase):
+class HybridSearch(SearchBase):
     def __init__(
         self,
-        backends: list[SearchCodeBase],
+        backends: list[SearchBase],
         fusion_strategy: FusionStrategyBase,
     ) -> None:
         if len(backends) == 0:

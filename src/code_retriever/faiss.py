@@ -1,20 +1,19 @@
 from typing import overload
-from tqdm import tqdm
 from transformers import AutoModel
-import torch
 import faiss
-from .search_code_base import SearchCodeBase, SearchResult
+from code_retriever.search_base import SearchBase, SearchResult
 from utils.constants import BATCH_SIZE, DIMENSIONS, CODE_MAX_LENGTH
 
 
-class FAISS(SearchCodeBase):
+class FAISS(SearchBase):
     def __init__(
         self,
         model_name: str = "jinaai/jina-embeddings-v2-base-code",
         batch_size=BATCH_SIZE,
+        device="cpu",
     ) -> None:
         self.model = AutoModel.from_pretrained(model_name, trust_remote_code=True).to(
-            "cuda" if torch.cuda.is_available() else "cpu"
+            device
         )
 
         self.index = faiss.IndexHNSWFlat(DIMENSIONS, 32, faiss.METRIC_L2)
@@ -52,8 +51,7 @@ class FAISS(SearchCodeBase):
             if len(batch) == self.batch_size or i == len(texts) - 1:
                 batches.append(batch)
                 batch = []
-        print("Embedding and saving batches: ")
-        for batch in tqdm(batches):
+        for batch in batches:
             embeddings = self.model.encode(
                 batch,
                 max_length=CODE_MAX_LENGTH,

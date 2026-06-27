@@ -1,6 +1,6 @@
 from collections import defaultdict
-from .fusion_strategy_base import FusionStrategyBase
-from .search_code_base import SearchResult
+from code_retriever.fusion_strategy_base import FusionStrategyBase
+from code_retriever.search_base import SearchResult
 
 
 class ReciprocalRankFusion(FusionStrategyBase):

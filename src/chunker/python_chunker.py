@@ -1,12 +1,11 @@
 import os
 from pathlib import Path
-from typing import IO, Any, Generator
+from typing import Any, Generator
 import tree_sitter_python as tspython
 from tree_sitter import Language, Node, Parser
 from collections import deque
 from structs import ChunkMetaData, Import
 from uuid import uuid4
-from utils import jsonl
 from utils.constants import SEMANTIC_CHUNKS
 
 PY_LANGUAGE = Language(tspython.language())
@@ -227,7 +226,7 @@ class PythonChunker:
         file_path: str,
         module_path: str,
         language: str,
-        dir_path: Path,
+        dir_path: str,
     ) -> ChunkMetaData:
         res = ChunkMetaData()
         res.chunk_id = str(uuid4())
@@ -258,9 +257,8 @@ class PythonChunker:
         self,
         file_path: str,
         module_path: str,
-        dir_path: Path,
+        dir_path: str,
         language: str = "Python",
-        file_stream: IO[str] | None = None,
     ) -> list[ChunkMetaData]:
         def read_callable_point(byte_offset, point):
             row, column = point
@@ -342,7 +340,7 @@ class PythonChunker:
         return chunks
 
     def preprocess_chunk_python_file(
-        self, file: Path, dir_path: Path, file_stream: IO[str] | None
+        self, file: str, dir_path: str
     ) -> list[ChunkMetaData]:
         module_parts = list(Path(os.path.relpath(file, dir_path)).parts)
         module_parts[-1] = module_parts[-1].split(".")[0]
@@ -351,11 +349,9 @@ class PythonChunker:
             module_parts.pop()
 
         module_path = ".".join(module_parts)
-        return self.chunk_python_file(
-            str(file), module_path, dir_path, "Python", file_stream
-        )
+        return self.chunk_python_file(str(file), module_path, dir_path, "Python")
 
-    def walk_directory(self, dir_path: Path) -> Generator[Path, Any, None]:
+    def walk_directory(self, dir_path: str) -> Generator[Path, Any, None]:
         for root, dirs, files in os.walk(dir_path):
             # If a subfolder contains 'pyvenv.cfg', remove it so os.walk skips it
             for d in list(dirs):
@@ -365,10 +361,10 @@ class PythonChunker:
             for file in files:
                 yield Path(os.path.join(root, file))
 
-    def chunk_files(self, dir_path: Path, file_stream: IO[str] | None) -> None:
+    def chunk_files(self, dir_path: str) -> Generator[list[ChunkMetaData], Any, None]:
         files = self.walk_directory(dir_path)
 
         for file in files:
             if file.suffix.lower() == ".py":
-                chunks = self.preprocess_chunk_python_file(file, dir_path, file_stream)
-                jsonl.chunks2jsonl(chunks, file_stream)
+                chunks = self.preprocess_chunk_python_file(str(file), dir_path)
+                yield chunks

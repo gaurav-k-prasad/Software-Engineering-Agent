@@ -1,4 +1,6 @@
 from typing import Callable, TypedDict
+
+from tqdm import tqdm
 from structs import ChunkMetaData
 
 
@@ -22,7 +24,9 @@ class Evaluator:
         avg_precision = 0
         avg_recall = 0
         mrr = 0
-        for t in target:
+
+        print("Starting Evaluation")
+        for t in tqdm(target):
             q = t["query"]
             expected = set(t["expected"])
 

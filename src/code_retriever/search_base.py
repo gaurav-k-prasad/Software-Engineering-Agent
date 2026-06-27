@@ -3,7 +3,7 @@ from typing import overload
 from structs import SearchResult
 
 
-class SearchCodeBase(ABC):
+class SearchBase(ABC):
     @abstractmethod
     @overload
     def search(self, query: str, no_of_outputs: int) -> list[SearchResult]:

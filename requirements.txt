@@ -1,6 +1,5 @@
 faiss-gpu
 torch==2.8.0
-tqdm
 transformers==4.44.2
 tree-sitter==0.25.2
 tree-sitter-python==0.25.0

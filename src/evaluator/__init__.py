@@ -1,1 +1,1 @@
-from .evaluator import Evaluator, SearchQueryData
+from evaluator.evaluator import Evaluator, SearchQueryData
