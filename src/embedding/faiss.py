@@ -72,9 +72,10 @@ class FAISS(SearchCodeBase):
         res: list[tuple[str, float]] = []
 
         for idx, dist in zip(indices, distances):
+            if idx == -1:
+                continue
             item = (self.idx_to_id[idx], dist)
             res.append(item)
-
         return res
 
     @overload
