@@ -49,10 +49,9 @@ class FAISS(SearchCodeBase):
             self.idx_to_id[self.curr_idx] = chunk_id
             self.curr_idx += 1
 
-            if len(batch) == BATCH_SIZE or i == len(texts) - 1:
+            if len(batch) == self.batch_size or i == len(texts) - 1:
                 batches.append(batch)
                 batch = []
-
         print("Embedding and saving batches: ")
         for batch in tqdm(batches):
             embeddings = self.model.encode(
