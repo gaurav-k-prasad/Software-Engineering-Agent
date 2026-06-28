@@ -9,7 +9,7 @@ import json
 from code_retriever import (
     FAISS,
     BM25_Plus,
-    Reranker,
+    RerankerLocal,
     ChunkStore,
     HybridSearch,
     ReciprocalRankFusion,
@@ -22,7 +22,7 @@ faiss = FAISS(device=device)
 bm25 = BM25_Plus()
 fusion_strategy = ReciprocalRankFusion()
 search_strategy = HybridSearch([faiss, bm25], fusion_strategy)
-reranker = Reranker(device=device)
+reranker = RerankerLocal(device=device)
 chunk_store = ChunkStore()
 python_chunker = PythonChunker()
 
@@ -31,10 +31,8 @@ retriever_pipeline = RetrievalPipeline(
 )
 
 retriever_pipeline.index_repository("data/test-repo", "output.jsonl")
-# retriever_pipeline.search("user controller", 8)
+res = retriever_pipeline.search("user controller", 8)
+for r in res:
+    print(r.qualified_name, r.name, r.file_name)
 
-e = Evaluator()
-with open("rag_eval_dataset_natural_language.jsonl") as f:
-    target = [json.loads(line) for line in f.readlines()]
-
-print(e.evaluate(8, retriever_pipeline.search, target))
+# print(e.evaluate(8, retriever_pipeline.search, target))

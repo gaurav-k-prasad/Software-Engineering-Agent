@@ -1,20 +1,20 @@
-import torch
+import tree_sitter_python as tspython
+from tree_sitter import Language, Node, Parser
 
-from src.code_retriever.reranker import _extract_scores_from_logits
-
-
-def test_extract_scores_from_single_logit_per_item() -> None:
-    logits = torch.tensor([[2.0], [0.5], [-1.0]])
-
-    scores = _extract_scores_from_logits(logits)
-
-    assert scores == [2.0, 0.5, -1.0]
+PY_LANGUAGE = Language(tspython.language())
+parser = Parser(PY_LANGUAGE)
 
 
-def test_extract_scores_from_two_class_logits() -> None:
-    logits = torch.tensor([[1.0, 2.0], [0.0, 1.0]])
+def read_callable_point(byte_offset, point):
+    row, column = point
+    if row >= len(src_lines) or column >= len(src_lines[row]):
+        return None
+    return src_lines[row][column:].encode("utf8")
 
-    scores = _extract_scores_from_logits(logits)
 
-    assert scores[0] > scores[1]
-    assert len(scores) == 2
+with open("data/test-files/test.py") as f:
+    src_lines = f.readlines()
+    tree = parser.parse(read_callable_point, encoding="utf8")
+    root = tree.root_node.child(0).child(0)
+    print(root)
+    # print("".join([it.text.decode() for it in root.child(0).child(0).named_children]))

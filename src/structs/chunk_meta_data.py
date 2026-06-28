@@ -9,6 +9,12 @@ class Import:
     def __str__(self) -> str:
         return f"{self.module_name}"
 
+@dataclass
+class OutgoingCall:
+    name: str
+    qualified_name: str
+    line: int
+
 
 @dataclass
 class ChunkMetaData:
@@ -33,4 +39,5 @@ class ChunkMetaData:
     imports: list[Import] = field(default_factory=list)
     contains: list[str] = field(default_factory=list)
     methods: list[str] = field(default_factory=list)
+    calls: list[str] = field(default_factory=list)
     contained_in: str | None = None

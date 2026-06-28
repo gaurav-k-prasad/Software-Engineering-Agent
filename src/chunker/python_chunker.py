@@ -81,6 +81,44 @@ class PythonChunker:
 
         return res
 
+    def _get_function_name(self, node: Node | None) -> str:
+        if not node:
+            return ""
+
+        if node.type == "identifier":
+            return node.text.decode() if node.text else ""
+        elif node.type == "attribute":
+            attribute_node = node.child_by_field_name("attribute")
+            object_node = node.child_by_field_name("object")
+
+            if not attribute_node or not object_node or not attribute_node.text:
+                raise ValueError(
+                    "No attribute node or object node found for type attribute"
+                )
+
+            object_name = self._get_function_name(node.child_by_field_name("object"))
+            if object_name:
+                object_name += "."
+            object_name += attribute_node.text.decode()
+        else:
+            object_name = ""
+
+        return object_name
+
+    def get_call(
+        self,
+        node: Node,
+    ) -> str:
+        assert node.type == "call", f"Node type should be of call"
+
+        function_node = node.child_by_field_name("function")
+        if not function_node:
+            raise ValueError("No function name found in function")
+
+        function_name = self._get_function_name(function_node)
+
+        return function_name
+
     def extract_class(
         self,
         node: Node,
@@ -327,6 +365,9 @@ class PythonChunker:
                     "import_statement",
                 ]:  # Import statements that are not module level
                     parent_metadata.imports.extend(self.get_imports(child))
+                elif child.type == "call":
+                    parent_metadata.calls.append(self.get_call(child))
+                    q.append((child, parent_metadata))
                 else:
                     q.append((child, parent_metadata))
 

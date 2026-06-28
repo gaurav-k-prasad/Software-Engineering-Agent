@@ -155,9 +155,9 @@ File: {datadict.file_name}
 
             res += "\n"
 
-        if "class" not in datadict.chunk_type:  # class need not have full source code
-            res += "Source Code:\n"
-            res += datadict.source_code
+    
+        res += "Source Code:\n"
+        res += datadict.source_code
 
         return res
 

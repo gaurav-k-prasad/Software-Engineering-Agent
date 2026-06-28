@@ -1,5 +1,7 @@
 faiss-gpu
 torch==2.8.0
-transformers==4.44.2
+transformers==4.51.0
 tree-sitter==0.25.2
+accelerate
 tree-sitter-python==0.25.0
+cohere

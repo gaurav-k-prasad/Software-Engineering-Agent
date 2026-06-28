@@ -7,4 +7,5 @@ from code_retriever.search_base import SearchResult, SearchBase
 from code_retriever.chunk_store import ChunkStore
 from code_retriever.fusion_strategy_base import FusionStrategyBase
 from code_retriever.reranker_base import RerankerBase
-from code_retriever.reranker import Reranker
+from code_retriever.reranker_local import RerankerLocal
+from code_retriever.reranker_cloud import RerankerCloud
